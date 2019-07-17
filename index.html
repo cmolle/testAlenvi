@@ -1,0 +1,384 @@
+<script src="moment.js"></script>
+
+<script>
+
+  ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+  // Question 1
+  ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+  // Fonction utilisée pour arrondir les prix au centième près
+   function arrondir(nombre) {
+     return Math.round(nombre * 100) / 100;
+   }
+
+  const customer1 = {
+    _id: '1234567890',
+    identity: { lastname: 'X' },
+    subscription: {
+      _id: 'qwertyuio',
+      service: {
+        name: 'Aide a l\'autonomie',
+      },
+      versions: [
+        { startDate: '2019/02/01', unitTTCPrice: 24 },
+        { startDate: '2019/04/15', unitTTCPrice: 22 },
+      ],
+    },
+  };
+
+  //On suppose ici que le tableau des versions est trié par ordre chronologique
+  function question1(subscription, date) {
+
+    var date = moment(date);
+
+    // On parcourt les différentes versions
+    var versions = subscription.versions;
+    var previousVersion = versions[0];
+    var datePrevious = previousVersion.startDate;
+    //Si la date est antérieur à toutes les versions, alors on renvoie -1
+    if (date.isBefore(moment(datePrevious))) {
+      return -1;
+    }
+
+    for (var i = 1; i < versions.length; i ++) {
+      var version = versions[i];
+      var dateCurrent = version.startDate;
+      // Si notre date est entre les dates des deux versions on renvoie le prix
+      if ((date.isAfter(moment(datePrevious)) || date.isSame(moment(datePrevious))) && date.isBefore(moment(dateCurrent))) {
+        return previousVersion.unitTTCPrice;
+      }
+      previousVersion = version;
+    }
+
+    return previousVersion.unitTTCPrice;
+  }
+
+  // Tests question 1
+  // console.log("QUESTION 1");
+  // console.log("attendu -1" + " recu " + question1(customer1.subscription, '2019/01/30'));
+  // console.log("attendu 24" + " recu " + question1(customer1.subscription, '2019/02/27'));
+  // console.log("attendu 22" + " recu " + question1(customer1.subscription, '2019/04/27'));
+  // console.log("attendu 24" + " recu " + question1(customer1.subscription, '2019/02/01'));
+  // console.log("attendu 22" + " recu " + question1(customer1.subscription, '2019/04/15'));
+
+
+  ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+  // Question 2
+  ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+  const customer2 = {
+    _id: '1234567890',
+    identity: { lastname: 'X' },
+    subscription: {
+      _id: 'qwertyuio',
+      service: {
+        name: 'Aide a l\'autonomie',
+        saturdaySurcharge: 10,
+        sundaySurcharge: 15,
+      },
+      versions: [
+        { startDate: '2019/02/01', unitTTCPrice: 24 },
+        { startDate: '2019/04/15', unitTTCPrice: 22 },
+      ],
+    },
+  };
+
+  function question2(customer, intervention) {
+    // On vérifie que l'intervention concerne bien le bénéficiaire
+    if (intervention.customer != customer._id) {
+      return -1;
+    }
+
+    var dateIntervention = intervention.date;
+
+    var unitTTCPrice = question1(customer.subscription, dateIntervention);
+    // Si la date de l'intervention ne rentre pas dans l'abonnement
+    if (unitTTCPrice == -1) {
+      return -1;
+    }
+
+    var day = moment(dateIntervention).format("dddd");
+
+    if (day == "Saturday" && customer.subscription.service.saturdaySurcharge) {
+      return arrondir((1 + customer.subscription.service.saturdaySurcharge/100) * unitTTCPrice * (150 / 60));
+    } else if (day == "Sunday" && customer.subscription.service.sundaySurcharge) {
+      return arrondir((1 + customer.subscription.service.sundaySurcharge/100) * unitTTCPrice * (150 / 60));
+    } else {
+      return unitTTCPrice * (150 / 60);
+    }
+  }
+
+  var event2 = {
+    date: '2019/04/11',
+    duration: 150,
+    customer: '1234567890',
+  };
+
+  // Tests question 2
+  // console.log("QUESTION 2");
+  // console.log("attendu 60" + " recu " + question2(customer2, event2));
+  //
+  // event2.date = '2018/04/11'
+  // console.log("attendu -1" + " recu " + question2(customer2, event2));
+  //
+  // event2.date = '2019/07/13'
+  // console.log("attendu 60,5" + " recu " + question2(customer2, event2));
+  //
+  // event2.date = '2019/07/14'
+  // console.log("attendu 63,25" + " recu " + question2(customer2, event2));
+  //
+  // event2.date = '2019/07/12'
+  // console.log("attendu 55" + " recu " + question2(customer2, event2));
+
+
+  ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+  // Question 3
+  ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+  const customer3 = {
+    _id: '1234567890',
+    identity: { lastname: 'X' },
+    subscription: {
+      _id: 'qwertyuio',
+      service: {
+        name: 'Aide a l\'autonomie',
+        saturdaySurcharge: 10,
+        sundaySurcharge: 15,
+      },
+      versions: [
+        { startDate: '2019/02/01', unitTTCPrice: 24 },
+        { startDate: '2019/04/15', unitTTCPrice: 22 },
+      ],
+    },
+    funding: { percentage: 60, thirdPartyPayer: 'Hauts de Seine' },
+  };
+
+  function question3(customer, intervention) {
+    // On vérifie que l'intervention concerne bien le bénéficiaire
+    if (intervention.customer != customer._id) {
+      return -1;
+    }
+
+    var dateIntervention = intervention.date;
+
+    var unitTTCPrice = question1(customer.subscription, dateIntervention);
+    // Si la date de l'intervention ne rentre pas dans l'abonnement
+    if (unitTTCPrice == -1) {
+      return -1;
+    }
+
+    var day = moment(dateIntervention).format("dddd");
+    var priceTotal;
+    var priceCustomer;
+    var priceThirdPartyPayer;
+
+    if (day == "Saturday" && customer.subscription.service.saturdaySurcharge) {
+      priceTotal =  arrondir((1 + customer.subscription.service.saturdaySurcharge/100) * unitTTCPrice * (150 / 60));
+      priceCustomer = priceTotal;
+      priceThirdPartyPayer = 0;
+    } else if (day == "Sunday" && customer.subscription.service.sundaySurcharge) {
+      priceTotal =  arrondir((1 + customer.subscription.service.sundaySurcharge/100) * unitTTCPrice * (150 / 60));
+      priceCustomer = priceTotal;
+      priceThirdPartyPayer = 0;
+    } else {
+      priceTotal =  unitTTCPrice * (150 / 60);
+      // On vérifie si le bénéficiaire à un financement
+      if (customer.funding) {
+        priceCustomer = arrondir(priceTotal * (1 - customer.funding.percentage / 100));
+        priceThirdPartyPayer = arrondir(priceTotal * (customer.funding.percentage / 100));
+      } else {
+        priceCustomer = priceTotal;
+        priceThirdPartyPayer = 0;
+      }
+    }
+
+    return {
+      priceTotal: priceTotal,
+      priceCustomer: priceCustomer,
+      priceThirdPartyPayer: priceThirdPartyPayer
+    };
+
+  }
+
+  var event3 = {
+    date: '2019/04/11',
+    duration: 150,
+    customer: '1234567890',
+  };
+
+  // Tests question 3
+  // console.log("QUESTION 3");
+  // console.log("attendu 60, 24, 36" + " recu ");
+  // console.log(question3(customer3, event3));
+  //
+  // event3.date = '2018/04/11'
+  // console.log("attendu -1" + " recu ");
+  // console.log(question3(customer3, event3));
+  //
+  // event3.date = '2019/07/13'
+  // console.log("attendu 60,5, 60,5, 0" + " recu ");
+  // console.log(question3(customer3, event3));
+  //
+  // event3.date = '2019/07/14'
+  // console.log("attendu 63,25, 63,25, 0" + " recu ");
+  // console.log(question3(customer3, event3));
+  //
+  // event3.date = '2019/07/12'
+  // console.log("attendu 55, 22 , 33" + " recu ");
+  // console.log(question3(customer3, event3));
+  //
+  // console.log("attendu 55, 55 , 0" + " recu ");
+  // console.log(question3(customer2, event3));
+
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+// Question 4
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+  const customer4 = {
+    _id: '1234567890',
+    identity: { lastname: 'X' },
+    subscriptions: [{
+      _id: 'qwertyuio',
+      service: {
+        name: 'Aide à l\'autonomie',
+        saturdaySurcharge: 10,
+        sundaySurcharge: 15,
+      },
+      versions: [
+        { startDate: '2019/02/01', unitTTCPrice: 24 },
+        { startDate: '2019/04/15', unitTTCPrice: 22 },
+      ],
+    }, {
+      _id: 'asdfghjkl',
+      service: { name: 'Ménage' },
+      versions: [
+        { startDate: '2019/02/01', unitTTCPrice: 22.3 },
+        { startDate: '2019/04/15', unitTTCPrice: 21.7 },
+      ],
+    }],
+    fundings: [{
+      subscription: 'qwertyuio',
+      percentage: 60,
+      thirdPartyPayer: 'Hauts de Seine',
+    }],
+  };
+
+  function question4(customer, intervention) {
+    // On vérifie que l'intervention concerne bien le bénéficiaire
+    if (intervention.customer != customer._id) {
+      return -1;
+    }
+    var dateIntervention = intervention.date;
+
+    // On recherche la souscription dans celles du bénéficiaires
+    var subscription;
+    for (var i = 0; i < customer.subscriptions.length; i ++) {
+      var tmpSub = customer.subscriptions[i];
+      if(tmpSub._id == intervention.subscription) {
+        subscription = tmpSub;
+      }
+    }
+
+    // Si l'intervention ne correspond pas à une souscription du bénéficiaire
+    if (!subscription) {
+      return -1;
+    }
+
+    var unitTTCPrice = question1(subscription, dateIntervention);
+    // Si la date de l'intervention ne rentre pas dans l'abonnement
+    if (unitTTCPrice == -1) {
+      return -1;
+    }
+
+    // On recherche l'aide financière lié à cette souscription
+    var funding;
+    for (var i = 0; i < customer.fundings.length; i ++) {
+      var tmpFund = customer.fundings[i];
+      if(tmpFund.subscription == intervention.subscription) {
+        funding = tmpFund;
+      }
+    }
+
+
+    var day = moment(dateIntervention).format("dddd");
+    var priceTotal;
+    var priceCustomer;
+    var priceThirdPartyPayer;
+
+    if (day == "Saturday" && subscription.service.saturdaySurcharge) {
+      priceTotal =  arrondir((1 + subscription.service.saturdaySurcharge/100) * unitTTCPrice * (150 / 60));
+      priceCustomer = priceTotal;
+      priceThirdPartyPayer = 0;
+    } else if (day == "Sunday" && subscription.service.sundaySurcharge) {
+      priceTotal =  arrondir((1 + subscription.service.sundaySurcharge/100) * unitTTCPrice * (150 / 60));
+      priceCustomer = priceTotal;
+      priceThirdPartyPayer = 0;
+    } else {
+      priceTotal =  unitTTCPrice * (150 / 60);
+      // On vérifie qu'il y a une aide financière lié à la souscription
+      if (funding) {
+        priceCustomer = arrondir(priceTotal * (1 - funding.percentage / 100));
+        priceThirdPartyPayer = arrondir(priceTotal * (funding.percentage / 100));
+      } else {
+        priceCustomer = priceTotal;
+        priceThirdPartyPayer = 0;
+      }
+    }
+
+    return {
+      priceTotal: priceTotal,
+      priceCustomer: priceCustomer,
+      priceThirdPartyPayer: priceThirdPartyPayer
+    };
+
+  }
+
+  var event4 = {
+    date: '2019/04/11',
+    duration: 150,
+    customer: '1234567890',
+    subscription: 'asdfghjkl',
+  };
+
+  // Tests quesion 4
+  // console.log("QUESTION 4");
+  //
+  // console.log("attendu 55.75, 55.75, 0" + " recu ");
+  // console.log(question4(customer4, event4));
+  //
+  // event4.date = '2018/04/11'
+  // console.log("attendu -1" + " recu ");
+  // console.log(question4(customer4, event4));
+  //
+  // event4.date = '2019/07/13'
+  // console.log("attendu 54.25, 54.25, 0" + " recu ");
+  // console.log(question4(customer4, event4));
+  //
+  // event4 = {
+  //   date: '2019/04/11',
+  //   duration: 150,
+  //   customer: '1234567890',
+  //   subscription: 'qwertyuio',
+  // };
+  //
+  // console.log("attendu 60, 24, 36" + " recu ");
+  // console.log(question4(customer4, event4));
+  //
+  // event4.date = '2018/04/11'
+  // console.log("attendu -1" + " recu ");
+  // console.log(question4(customer4, event4));
+  //
+  // event4.date = '2019/07/13'
+  // console.log("attendu 60,5, 60,5, 0" + " recu ");
+  // console.log(question4(customer4, event4));
+  //
+  // event4.date = '2019/07/14'
+  // console.log("attendu 63,25, 63,25, 0" + " recu ");
+  // console.log(question4(customer4, event4));
+  //
+  // event4.date = '2019/07/12'
+  // console.log("attendu 55, 22 , 33" + " recu ");
+  // console.log(question4(customer4, event4));
+
+
+</script>
